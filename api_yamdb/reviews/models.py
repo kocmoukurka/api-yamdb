@@ -74,7 +74,7 @@ class Title(NamedDescriptionAbstract):
         Category, on_delete=models.CASCADE, verbose_name='Категория')
     # Рейтинг произведения
     rating = models.IntegerField(
-        verbose_name='Рейтинг')
+        verbose_name='Рейтинг', null=True, blank=True)
     # Подробное описание произведения
     description = models.TextField(verbose_name='Описание')
     # Изображение обложки
