@@ -71,3 +71,35 @@ class Title(NamedDescriptionAbstract):
 
     def __str__(self):
         return self.name[:20]
+
+
+class Review(UserTextCreationAbstract):
+    title = models.ForeignKey(
+        Title, on_delete=models.CASCADE, verbose_name='Пост'
+    )
+    score = models.IntegerField(
+        verbose_name='Оценка отзыва')
+
+    class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
+        default_related_name = 'reviews'
+        ordering = ('-created',)
+
+    def __str__(self):
+        return self.text[:20]
+
+
+class Comment(UserTextCreationAbstract):
+    review = models.ForeignKey(
+        Review, on_delete=models.CASCADE, verbose_name='Отзыв'
+    )
+
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
+        default_related_name = 'comments'
+        ordering = ('-created',)
+
+    def __str__(self):
+        return self.text[:20]
