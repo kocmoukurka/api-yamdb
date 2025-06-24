@@ -19,6 +19,18 @@ class CategoryGenreAbstract(NamedDescriptionAbstract):
         abstract = True
 
 
+class UserTextCreationAbstract(models.Model):
+    author = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name='Автор'
+    )
+    text = models.TextField()
+    created = models.DateTimeField(
+        verbose_name='Дата добавления', auto_now_add=True, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
 class Category(CategoryGenreAbstract):
     class Meta:
         verbose_name = 'Категория'
@@ -46,6 +58,8 @@ class Title(NamedDescriptionAbstract):
     category = models.ForeignKey(
         Category, on_delete=models.CASCADE, verbose_name='Категория'
     )
+    rating = models.IntegerField(
+        verbose_name='Рейтинг')
     image = models.ImageField(
         upload_to='titles/', null=True, blank=True, verbose_name='Изображение')
 
