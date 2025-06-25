@@ -1,6 +1,7 @@
 # reviews/models.py
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
+
 from django.contrib.auth import get_user_model
 
 User = get_user_model()  # Получаем базовую модель User
@@ -97,6 +98,7 @@ class Title(NamedDescriptionAbstract):
         return self.name[:20]
 
 
+
 class Review(models.Model):
     title = models.ForeignKey(
         Title,
@@ -148,3 +150,4 @@ class Comment(models.Model):
 
     def __str__(self):
         return self.text[:15]
+

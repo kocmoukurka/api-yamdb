@@ -188,3 +188,4 @@ class APIToken(APIView):
 
         token = AccessToken.for_user(user)
         return Response({'token': str(token)}, status=HTTP_200_OK)
+
