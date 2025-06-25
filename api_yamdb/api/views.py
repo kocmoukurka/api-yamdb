@@ -2,10 +2,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, status, viewsets, mixins
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
+from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import AccessToken
 
 from api.permissions import (IsAdmin, IsAdminOrReadOnly,
@@ -157,31 +159,52 @@ class TitleViewSet(viewsets.ModelViewSet):
         return queryset
 
 
-class ReviewViewSet(viewsets.ModelViewSet):
+class PermissionMethodNames():
+    permission_classes = (
+        IsAuthenticatedOrReadOnly,
+        IsAuthorModeratorAdminOrReadOnly,
+    )
+    http_method_names = ('get', 'post', 'patch', 'delete', 'head', 'options',)
+
+
+class ReviewViewSet(PermissionMethodNames, viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
-    permission_classes = [IsAuthorModeratorAdminOrReadOnly]
+
+    def get_title(self):
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
     def get_queryset(self):
-        title_id = self.kwargs.get('title_id')
-        title = get_object_or_404(Title, id=title_id)
-        return title.reviews.all()
+        return self.get_title().reviews.all()
 
     def perform_create(self, serializer):
-        title_id = self.kwargs.get('title_id')
-        title = get_object_or_404(Title, id=title_id)
+        title = self.get_title()
+        if Review.objects.filter(title=title, author=self.request.user).exists():
+            raise ValidationError(  # Используем правильный класс исключения
+                {'detail': 'Вы уже оставляли отзыв на это произведение.'}
+            )
         serializer.save(author=self.request.user, title=title)
+        self.update_title_rating(title)
+
+    def perform_destroy(self, instance):
+        title = instance.title
+        instance.delete()
+        self.update_title_rating(title)
+
+    def update_title_rating(self, title):
+        from django.db.models import Avg
+        result = title.reviews.aggregate(average=Avg('score'))
+        title.rating = result['average'] or 0
+        title.save(update_fields=['rating'])
 
 
-class CommentViewSet(viewsets.ModelViewSet):
+class CommentViewSet(PermissionMethodNames, viewsets.ModelViewSet):
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthorModeratorAdminOrReadOnly]
+
+    def get_review(self):
+        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
     def get_queryset(self):
-        review_id = self.kwargs.get('review_id')
-        review = get_object_or_404(Review, id=review_id)
-        return review.comments.all()
+        return self.get_review().comments.all()
 
     def perform_create(self, serializer):
-        review_id = self.kwargs.get('review_id')
-        review = get_object_or_404(Review, id=review_id)
-        serializer.save(author=self.request.user, review=review)
+        serializer.save(author=self.request.user, review=self.get_review())

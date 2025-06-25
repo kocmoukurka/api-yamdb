@@ -1,6 +1,7 @@
 # reviews/models.py
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 
@@ -177,6 +178,12 @@ class Review(UserTextPubDateAbstract):
     )
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=('title', 'author'),
+                name='unique_review_per_author'
+            )
+        ]
         # Человеческое представление единичного отзыва
         verbose_name = 'Отзыв'
         # Человеческое представление множественного числа
