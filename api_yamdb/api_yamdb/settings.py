@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     'api,
     'reviews,
     'users,
-
 ]
 
 AUTH_USER_MODEL = 'users.User'
