@@ -75,7 +75,7 @@ class Title(NamedDescriptionAbstract):
     # Рейтинг произведения
     rating = models.IntegerField(
         verbose_name='Рейтинг', null=True, blank=True)
-    # Подробное описание произведенияAdd commentMore actions
+    # Подробное описание произведения
     description = models.TextField(verbose_name='Описание')
     # Изображение обложки
     image = models.ImageField(upload_to='titles/', null=True,
