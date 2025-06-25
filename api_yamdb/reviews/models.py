@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 User = get_user_model()  # Получаем базовую модель User
 
 
-class NamedDescriptionAbstract(models.Model):
+class NamedAbstract(models.Model):
     """
     Абстрактный класс для наследования с общим полем name.
     Подходит для любых моделей, где необходимо уникальное наименование.
@@ -19,7 +19,7 @@ class NamedDescriptionAbstract(models.Model):
         abstract = True  # Класс объявлен абстрактным
 
 
-class CategoryGenreAbstract(NamedDescriptionAbstract):
+class CategoryGenreAbstract(NamedAbstract):
     """
     Абстрактный класс для наследования моделями Category и Genre.
     Содержит дополнительное поле slug для уникального адреса ресурса.
@@ -35,7 +35,7 @@ class CategoryGenreAbstract(NamedDescriptionAbstract):
         abstract = True  # Класс объявлен абстрактным
 
 
-class UserTextCreationAbstract(models.Model):
+class UserTextPubDateAbstract(models.Model):
     """
     Абстрактный класс для моделей отзывов и комментариев.
     Содержит общую информацию о создателе текста (автор, текст, дата создания).
@@ -49,7 +49,7 @@ class UserTextCreationAbstract(models.Model):
     # Основной текст публикации
     text = models.TextField()
     # Дата создания поста или комментария
-    created = models.DateTimeField(
+    pub_date = models.DateTimeField(
         verbose_name='Дата добавления',
         auto_now_add=True,
         db_index=True
@@ -92,7 +92,7 @@ class Genre(CategoryGenreAbstract):
         return self.name[:20]
 
 
-class Title(NamedDescriptionAbstract):
+class Title(NamedAbstract):
     """
     Основная модель произведения.
     Включает базовые характеристики произведения, такие как год выпуска,
@@ -111,7 +111,9 @@ class Title(NamedDescriptionAbstract):
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
-        verbose_name='Категория'
+        verbose_name='Категория',
+        null=True,
+        blank=True
     )
     # Рейтинг произведения (может быть пустым)
     rating = models.IntegerField(
@@ -121,7 +123,9 @@ class Title(NamedDescriptionAbstract):
     )
     # Подробное описание произведения
     description = models.TextField(
-        verbose_name='Описание'
+        verbose_name='Описание',
+        null=True,
+        blank=True
     )
     # Изображение обложки (опционально)
     image = models.ImageField(
@@ -148,7 +152,7 @@ class Title(NamedDescriptionAbstract):
         return self.name[:20]
 
 
-class Review(UserTextCreationAbstract):
+class Review(UserTextPubDateAbstract):
     """
     Модель отзыва.
     Связана с произведением и включает оценку и текст отзыва.
@@ -173,7 +177,7 @@ class Review(UserTextCreationAbstract):
         default_related_name = 'reviews'
         # Порядок сортировки по убыванию даты создания
         ordering = (
-            '-created',
+            '-pub_date',
         )
 
     def __str__(self):
@@ -181,7 +185,7 @@ class Review(UserTextCreationAbstract):
         return self.text[:20]
 
 
-class Comment(UserTextCreationAbstract):
+class Comment(UserTextPubDateAbstract):
     """
     Модель комментария.
     Связана с отзывом и включает текст комментария.
@@ -202,7 +206,7 @@ class Comment(UserTextCreationAbstract):
         default_related_name = 'comments'
         # Порядок сортировки по убыванию даты создания
         ordering = (
-            '-created',
+            '-pub_date',
         )
 
     def __str__(self):
