@@ -67,10 +67,12 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
+    # Проверка является ли пользователь администратором
     @property
     def is_admin(self):
         return self.is_superuser or self.role == ROLE_ADMIN
 
+    # Проверка является ли пользователь модератором
     @property
     def is_moderator(self):
         return self.role == ROLE_MODERATOR

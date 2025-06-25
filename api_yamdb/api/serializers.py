@@ -1,12 +1,16 @@
+from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from reviews.models import Category, Genre, Title, Review, Comment
-from users.models import CustomUser
+from users.constants import MAX_EMAIL_LENGHT, MAX_USERNAME_LENGHT
+
+
+User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
-        model = CustomUser
+        model = User
         fields = (
             'username', 'email', 'first_name',
             'last_name', 'bio', 'role'
@@ -18,15 +22,46 @@ class UserMeSerializer(UserSerializer):
 
 
 class SignUpSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-    username = serializers.CharField(required=True)
+    email = serializers.EmailField(
+        required=True,
+        max_length=MAX_EMAIL_LENGHT
+    )
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        required=True,
+        max_length=MAX_USERNAME_LENGHT,
+    )
 
     def validate_username(self, value):
+        '''Проверка username на запрет использования слова "me"
+        в качестве логина.
+        '''
         if value.lower() == 'me':
             raise serializers.ValidationError(
-                'Использовать имя "me" в качестве username запрещено'
+                'Использовать имя "me" в качестве username запрещено.'
             )
         return value
+
+    def validate(self, data):
+        '''Проверка связки username и email.
+        Для пользователя с уже существующим логином:
+            - если email отличается — ошибка.
+            - если email совпадает — повторно отправляется код подтверждения.
+        Если email уже используется другим пользователем — ошибка.
+        '''
+        username = data.get('username')
+        email = data.get('email')
+        user = User.objects.filter(username=username).first()
+        if user:
+            if user.email != email:
+                raise serializers.ValidationError(
+                    'Пользователь с таким username уже зарегистрирован.'
+                )
+        elif User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                'Пользователь с таким email уже зарегистрирован.'
+            )
+        return data
 
 
 class TokenSerializer(serializers.Serializer):
