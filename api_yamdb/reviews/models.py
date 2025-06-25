@@ -4,12 +4,15 @@ from django.contrib.auth import get_user_model
 User = get_user_model()  # Получаем базовую модель User
 
 
+
 class NamedAbstract(models.Model):
+
     """
     Абстрактный класс для наследования с общим полем name.
     Подходит для любых моделей, где необходимо уникальное наименование.
     """
     # Название объекта
+
     name = models.CharField(
         verbose_name='Название',
         max_length=256
@@ -20,11 +23,13 @@ class NamedAbstract(models.Model):
 
 
 class CategoryGenreAbstract(NamedAbstract):
+
     """
     Абстрактный класс для наследования моделями Category и Genre.
     Содержит дополнительное поле slug для уникального адреса ресурса.
     """
     # Уникальное адресное поле для ссылок
+
     slug = models.SlugField(
         verbose_name='Слаг',
         max_length=50,
@@ -80,6 +85,7 @@ class Genre(CategoryGenreAbstract):
     Модель жанра произведений.
     Представляет собой набор возможных жанров, к которым принадлежат
     произведения.
+
     """
     class Meta:
         # Человеческое представление единичного жанра
@@ -92,7 +98,9 @@ class Genre(CategoryGenreAbstract):
         return self.name[:20]
 
 
+
 class Title(NamedAbstract):
+
     """
     Основная модель произведения.
     Включает базовые характеристики произведения, такие как год выпуска,
@@ -143,9 +151,11 @@ class Title(NamedAbstract):
         # Имя для обратных связей по умолчанию
         default_related_name = 'titles'
         # Порядок сортировки по убыванию года выпуска
+
         ordering = (
             '-year',
         )
+
 
     def __str__(self):
         # Возвращает короткое строковое представление объекта
