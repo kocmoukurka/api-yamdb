@@ -1,4 +1,7 @@
+# reviews/models.py
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
+
 from django.contrib.auth import get_user_model
 
 User = get_user_model()  # Получаем базовую модель User
@@ -222,3 +225,4 @@ class Comment(UserTextPubDateAbstract):
     def __str__(self):
         # Возвращает короткий отрывок текста комментария
         return self.text[:20]
+
