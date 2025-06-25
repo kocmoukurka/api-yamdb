@@ -2,10 +2,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 
-from django.contrib.auth import get_user_model
-
-User = get_user_model()  # Получаем базовую модель User
-
+from users.models import CustomUser
 
 
 class NamedAbstract(models.Model):
@@ -50,7 +47,7 @@ class UserTextPubDateAbstract(models.Model):
     """
     # Автор публикации
     author = models.ForeignKey(
-        User,
+        CustomUser,
         on_delete=models.CASCADE,
         verbose_name='Автор'
     )
@@ -99,7 +96,6 @@ class Genre(CategoryGenreAbstract):
     def __str__(self):
         # Возвращает короткое строковое представление объекта
         return self.name[:20]
-
 
 
 class Title(NamedAbstract):
@@ -158,7 +154,6 @@ class Title(NamedAbstract):
         ordering = (
             '-year',
         )
-
 
     def __str__(self):
         # Возвращает короткое строковое представление объекта
@@ -225,4 +220,3 @@ class Comment(UserTextPubDateAbstract):
     def __str__(self):
         # Возвращает короткий отрывок текста комментария
         return self.text[:20]
-
