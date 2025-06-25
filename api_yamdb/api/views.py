@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
@@ -14,8 +15,9 @@ from api.serializers import (CategorySerializer, CommentSerializer,
                              SignUpSerializer, TitleReadSerializer,
                              TitleWriteSerializer, TokenSerializer,
                              UserMeSerializer, UserSerializer)
-from reviews.models import Category, Comment, Genre, Review, Title
-from users.models import CustomUser
+from reviews.models import Category, Genre, Review, Title
+
+User = get_user_model()
 
 
 @api_view(['POST'])
@@ -69,7 +71,7 @@ def get_token(request):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = CustomUser.objects.all()
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     lookup_field = 'username'
     permission_classes = [IsAdmin]
