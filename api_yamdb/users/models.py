@@ -2,9 +2,15 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from .constants import (
-    CONFIRMATION_CODE_LENGTH, MAX_EMAIL_LENGHT, MAX_FIRSTNAME_LENGTH,
-    MAX_LASTNAME_LENGTH, MAX_ROLE_LENGTH, MAX_USERNAME_LENGHT, ROLE_ADMIN,
-    ROLE_MODERATOR, ROLE_USER
+    CONFIRMATION_CODE_LENGTH,
+    MAX_EMAIL_LENGHT,
+    MAX_FIRSTNAME_LENGTH,
+    MAX_LASTNAME_LENGTH,
+    MAX_ROLE_LENGTH,
+    MAX_USERNAME_LENGHT,
+    ROLE_ADMIN,
+    ROLE_MODERATOR,
+    ROLE_USER,
 )
 from .validators import username_validator
 
@@ -17,34 +23,37 @@ ROLES = (
 
 
 class CustomUser(AbstractUser):
-    '''Кастомная модель пользователя.'''
+    """Кастомная модель пользователя с расширенными полями."""
+
     username = models.CharField(
         verbose_name='Логин',
         max_length=MAX_USERNAME_LENGHT,
         unique=True,
-        help_text='Обязательное поле. Не больше 150 символов. Только буквы,'
-        'цифры и символы @/./+/-/_',
-        validators=(username_validator,)
+        help_text=(
+            'Обязательное поле. Не больше 150 символов. '
+            'Только буквы, цифры и символы @/./+/-/_'
+        ),
+        validators=(username_validator,),
     )
     email = models.EmailField(
         verbose_name='Электронная почта',
         max_length=MAX_EMAIL_LENGHT,
         unique=True,
-        help_text='Обязательное поле.'
+        help_text='Обязательное поле.',
     )
     first_name = models.CharField(
         verbose_name='Имя',
         max_length=MAX_FIRSTNAME_LENGTH,
-        blank=True
+        blank=True,
     )
     last_name = models.CharField(
         verbose_name='Фамилия',
         max_length=MAX_LASTNAME_LENGTH,
-        blank=True
+        blank=True,
     )
     bio = models.TextField(
         verbose_name='О себе',
-        blank=True
+        blank=True,
     )
     role = models.CharField(
         verbose_name='Роль',
@@ -56,7 +65,7 @@ class CustomUser(AbstractUser):
         verbose_name='Код подтверждения',
         max_length=CONFIRMATION_CODE_LENGTH,
         blank=True,
-        null=True
+        null=True,
     )
 
     class Meta:
@@ -67,12 +76,12 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-    # Проверка является ли пользователь администратором
     @property
     def is_admin(self):
+        """Проверяет, является ли пользователь администратором."""
         return self.is_superuser or self.role == ROLE_ADMIN
 
-    # Проверка является ли пользователь модератором
     @property
     def is_moderator(self):
+        """Проверяет, является ли пользователь модератором."""
         return self.role == ROLE_MODERATOR
