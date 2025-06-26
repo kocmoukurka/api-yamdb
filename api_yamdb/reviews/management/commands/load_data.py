@@ -1,7 +1,13 @@
 import csv
+
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
+
+from api_yamdb.settings import BASE_DIR
 from reviews.models import Category, Genre, Title, Review, Comment
-from users.models import User
+
+
+User = get_user_model()
 
 
 class Command(BaseCommand):
@@ -9,7 +15,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # Загрузка пользователей
-        with open('static/data/users.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/users.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 User.objects.create(
@@ -23,7 +29,8 @@ class Command(BaseCommand):
                 )
 
         # Загрузка категорий
-        with open('static/data/category.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/category.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Category.objects.create(
@@ -33,7 +40,7 @@ class Command(BaseCommand):
                 )
 
         # Загрузка жанров
-        with open('static/data/genre.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/genre.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Genre.objects.create(
@@ -43,7 +50,7 @@ class Command(BaseCommand):
                 )
 
         # Загрузка произведений
-        with open('static/data/titles.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/titles.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Title.objects.create(
@@ -54,7 +61,8 @@ class Command(BaseCommand):
                 )
 
         # Загрузка связей жанров и произведений
-        with open('static/data/genre_title.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/genre_title.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 title = Title.objects.get(id=row['title_id'])
@@ -62,7 +70,7 @@ class Command(BaseCommand):
                 title.genre.add(genre)
 
         # Загрузка отзывов
-        with open('static/data/review.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/review.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Review.objects.create(
@@ -75,7 +83,8 @@ class Command(BaseCommand):
                 )
 
         # Загрузка комментариев
-        with open('static/data/comments.csv', encoding='utf-8') as f:
+        with open(f'{BASE_DIR}/static/data/comments.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Comment.objects.create(

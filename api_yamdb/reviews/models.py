@@ -1,60 +1,60 @@
-# reviews/models.py
+"""Модели для приложения reviews."""
+
 from django.contrib.auth import get_user_model
 from django.db import models
-from django.core.exceptions import ValidationError
+
+from reviews.constants import (
+    MAX_LINE_LENGTH,
+    MAX_NAME_LENGTH,
+    MAX_SLUG_LENGHT,
+)
 
 User = get_user_model()
 
 
 class NamedAbstract(models.Model):
-
-    """
-    Абстрактный класс для наследования с общим полем name.
+    """Абстрактная модель с полем name.
     Подходит для любых моделей, где необходимо уникальное наименование.
     """
-    # Название объекта
 
     name = models.CharField(
         verbose_name='Название',
-        max_length=256
+        max_length=MAX_NAME_LENGTH
     )
 
     class Meta:
-        abstract = True  # Класс объявлен абстрактным
+        abstract = True
 
 
 class CategoryGenreAbstract(NamedAbstract):
-
-    """
-    Абстрактный класс для наследования моделями Category и Genre.
+    """Абстрактная модель для категорий и жанров.
     Содержит дополнительное поле slug для уникального адреса ресурса.
     """
-    # Уникальное адресное поле для ссылок
 
     slug = models.SlugField(
         verbose_name='Слаг',
-        max_length=50,
+        max_length=MAX_SLUG_LENGHT,
         unique=True
     )
 
     class Meta:
-        abstract = True  # Класс объявлен абстрактным
+        abstract = True
 
 
 class UserTextPubDateAbstract(models.Model):
+    """Абстрактная модель для отзывов и комментариев.
+    Содержит общую информацию о создателе текста:
+    - автор
+    - текст
+    - дата создания
     """
-    Абстрактный класс для моделей отзывов и комментариев.
-    Содержит общую информацию о создателе текста (автор, текст, дата создания).
-    """
-    # Автор публикации
+
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         verbose_name='Автор'
     )
-    # Основной текст публикации
     text = models.TextField()
-    # Дата создания поста или комментария
     pub_date = models.DateTimeField(
         verbose_name='Дата добавления',
         auto_now_add=True,
@@ -62,62 +62,42 @@ class UserTextPubDateAbstract(models.Model):
     )
 
     class Meta:
-        abstract = True  # Класс объявлен абстрактным
+        abstract = True
+        ordering = ('-pub_date',)
 
 
 class Category(CategoryGenreAbstract):
-    """
-    Модель категории произведений.
-    Описывает типы категорий, к которым относятся произведения.
-    """
+    """Модель категории произведений."""
+
     class Meta:
-        ordering = ['name']
-        # Человеческое представление единичной категории
         verbose_name = 'Категория'
-        # Человеческое представление множественного числа
         verbose_name_plural = 'Категории'
+        ordering = ('name',)
 
     def __str__(self):
-        # Возвращает короткое строковое представление объекта
-        return self.name[:20]
+        return self.name[:MAX_LINE_LENGTH]
 
 
 class Genre(CategoryGenreAbstract):
-    """
-    Модель жанра произведений.
-    Представляет собой набор возможных жанров, к которым принадлежат
-    произведения.
+    """Модель жанра произведений."""
 
-    """
     class Meta:
-        ordering = ['name']
-        # Человеческое представление единичного жанра
         verbose_name = 'Жанр'
-        # Человеческое представление множественного числа
         verbose_name_plural = 'Жанры'
+        ordering = ('name',)
 
     def __str__(self):
-        # Возвращает короткое строковое представление объекта
-        return self.name[:20]
+        return self.name[:MAX_LINE_LENGTH]
 
 
 class Title(NamedAbstract):
+    """Модель произведения (фильмы, книги и др.)."""
 
-    """
-    Основная модель произведения.
-    Включает базовые характеристики произведения, такие как год выпуска,
-    категория, жанр, рейтинг и прочее.
-    """
-    # Год выпуска произведения
-    year = models.IntegerField(
-        verbose_name='Год выхода'
-    )
-    # Произведение может относиться к нескольким жанрам
+    year = models.IntegerField(verbose_name='Год выхода')
     genre = models.ManyToManyField(
         Genre,
         verbose_name='Жанр'
     )
-    # Внешний ключ на категорию
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -125,19 +105,16 @@ class Title(NamedAbstract):
         null=True,
         blank=True
     )
-    # Рейтинг произведения (может быть пустым)
     rating = models.IntegerField(
         verbose_name='Рейтинг',
         null=True,
         blank=True
     )
-    # Подробное описание произведения
     description = models.TextField(
         verbose_name='Описание',
         null=True,
         blank=True
     )
-    # Изображение обложки (опционально)
     image = models.ImageField(
         upload_to='titles/',
         null=True,
@@ -146,68 +123,44 @@ class Title(NamedAbstract):
     )
 
     class Meta:
-        # Человеческое представление единичного произведения
         verbose_name = 'Произведение'
-        # Человеческое представление множественного числа
         verbose_name_plural = 'Произведения'
-        # Имя для обратных связей по умолчанию
         default_related_name = 'titles'
-        # Порядок сортировки по убыванию года выпуска
-
-        ordering = (
-            '-year',
-        )
+        ordering = ('-year',)
 
     def __str__(self):
-        # Возвращает короткое строковое представление объекта
-        return self.name[:20]
+        return self.name[:MAX_LINE_LENGTH]
 
 
 class Review(UserTextPubDateAbstract):
-    """
-    Модель отзыва.
-    Связана с произведением и включает оценку и текст отзыва.
-    """
-    # Пост, которому принадлежит отзыв
+    """Модель отзыва на произведение."""
+
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
-        verbose_name='Пост'
+        verbose_name='Произведение'
     )
-    # Оценка отзыва (числовое значение)
-    score = models.IntegerField(
-        verbose_name='Оценка отзыва'
-    )
+    score = models.IntegerField(verbose_name='Оценка отзыва')
 
     class Meta:
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
+        default_related_name = 'reviews'
         constraints = [
             models.UniqueConstraint(
                 fields=('title', 'author'),
                 name='unique_review_per_author'
             )
         ]
-        # Человеческое представление единичного отзыва
-        verbose_name = 'Отзыв'
-        # Человеческое представление множественного числа
-        verbose_name_plural = 'Отзывы'
-        # Имя для обратных связей по умолчанию
-        default_related_name = 'reviews'
-        # Порядок сортировки по убыванию даты создания
-        ordering = (
-            '-pub_date',
-        )
+        ordering = ('-pub_date',)
 
     def __str__(self):
-        # Возвращает короткий отрывок текста отзыва
-        return self.text[:20]
+        return self.text[:MAX_LINE_LENGTH]
 
 
 class Comment(UserTextPubDateAbstract):
-    """
-    Модель комментария.
-    Связана с отзывом и включает текст комментария.
-    """
-    # Отзыв, к которому относится комментарий
+    """Модель комментария к отзыву."""
+
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
@@ -215,17 +168,10 @@ class Comment(UserTextPubDateAbstract):
     )
 
     class Meta:
-        # Человеческое представление единичного комментария
         verbose_name = 'Комментарий'
-        # Человеческое представление множественного числа
         verbose_name_plural = 'Комментарии'
-        # Имя для обратных связей по умолчанию
         default_related_name = 'comments'
-        # Порядок сортировки по убыванию даты создания
-        ordering = (
-            '-pub_date',
-        )
+        ordering = ('-pub_date',)
 
     def __str__(self):
-        # Возвращает короткий отрывок текста комментария
-        return self.text[:20]
+        return self.text[:MAX_LINE_LENGTH]
