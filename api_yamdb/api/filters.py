@@ -13,7 +13,7 @@ class TitleFilter(django_filters.FilterSet):
     )
 
     # Поле фильтрации по категории с использованием slug
-    category = django_filters.ModelChoiceFilter(
+    category = django_filters.ModelMultipleChoiceFilter(
         field_name='category__slug',
         to_field_name='slug',
         queryset=Category.objects.all()
@@ -21,7 +21,8 @@ class TitleFilter(django_filters.FilterSet):
 
     # Поле фильтрации по году выхода
     year = django_filters.NumberFilter(field_name='year')
+    name = django_filters.CharFilter(field_name='name')
 
     class Meta:
         model = Title
-        fields = ['genre', 'category', 'year']
+        fields = ('name', 'genre', 'category', 'year')
