@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -118,6 +119,23 @@ class TitleWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = '__all__'
+
+    # Добавлена проверка по году выпуска - год не может быть больше текущего
+    def validate_year(self, value):
+        current_year = datetime.now().year
+        if value > current_year:
+            raise serializers.ValidationError(
+                'Год выпуска не может быть больше текущего'
+            )
+        return value
+
+    # Добавлена проверка принадлежности хотя бы к одному жанру
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Произведение должно принадлежать хотя бы к одному жанру'
+            )
+        return value
 
 
 class ReviewSerializer(serializers.ModelSerializer):
