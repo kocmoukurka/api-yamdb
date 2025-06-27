@@ -7,10 +7,9 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets, mixins, serializers
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import (AllowAny, IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -163,34 +162,15 @@ class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
             return TitleReadSerializer
         return TitleWriteSerializer
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        category_slug = self.request.query_params.get('category')
-        genre_slug = self.request.query_params.get('genre')
-        name = self.request.query_params.get('name')
-        year = self.request.query_params.get('year')
-
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        if genre_slug:
-            queryset = queryset.filter(genre__slug=genre_slug)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if year:
-            queryset = queryset.filter(year=year)
-
-        return queryset
-
     # Обработка ошибок валидации
     def create(self, request, *args, **kwargs):
         try:
             return super().create(request, *args, **kwargs)
-        except serializers.ValidationError as e:
+        except ValidationError as e:
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
 
 
 class ReviewViewSet(
@@ -214,7 +194,7 @@ class ReviewViewSet(
             title=title,
             author=self.request.user
         ).exists():
-            raise ValidationError( 
+            raise ValidationError(
                 {'detail': 'Вы уже оставляли отзыв на это произведение.'}
             )
         serializer.save(author=self.request.user, title=title)
