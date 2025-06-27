@@ -16,6 +16,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
+from django_filters.rest_framework import DjangoFilterBackend
+
 
 from api.mixins import (
     HTTPMethodNamesMixin,
@@ -35,6 +37,7 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
+from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
@@ -150,32 +153,15 @@ class GenreViewSet(RetrieveUpdateStatusHTTP405, viewsets.ModelViewSet):
 
 class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
     """ViewSet для работы с произведениями (фильмы, книги и др.)."""
-
     queryset = Title.objects.all()
     permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
             return TitleReadSerializer
         return TitleWriteSerializer
-
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        category_slug = self.request.query_params.get('category')
-        genre_slug = self.request.query_params.get('genre')
-        name = self.request.query_params.get('name')
-        year = self.request.query_params.get('year')
-
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        if genre_slug:
-            queryset = queryset.filter(genre__slug=genre_slug)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if year:
-            queryset = queryset.filter(year=year)
-
-        return queryset
 
 
 class ReviewViewSet(
