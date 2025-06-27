@@ -1,6 +1,6 @@
+from datetime import datetime
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from rest_framework.validators import UniqueTogetherValidator
 
 from reviews.models import Category, Genre, Title, Review, Comment
 from users.constants import MAX_EMAIL_LENGHT, MAX_USERNAME_LENGHT
@@ -110,6 +110,23 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         model = Title
         fields = ('id', 'name', 'year', 'description', 'genre', 'category')
 
+    # Добавлена проверка по году выпуска - год не может быть больше текущего
+    def validate_year(self, value):
+        current_year = datetime.now().year
+        if value > current_year:
+            raise serializers.ValidationError(
+                'Год выпуска не может быть больше текущего'
+            )
+        return value
+
+    # Добавлена проверка принадлежности хотя бы к одному жанру
+    def validate_genre(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                'Произведение должно принадлежать хотя бы к одному жанру'
+            )
+        return value
+
 
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
@@ -119,15 +136,15 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = '__all__'  
-        read_only_fields = ('title',)    
+        fields = '__all__'
+        read_only_fields = ('title',)
 
     def validate_score(self, value):
         if not 1 <= value <= 10:
             raise serializers.ValidationError(
                 'Оценка должна быть в диапазоне от 1 до 10.'
-                )
-        return value 
+            )
+        return value
 
 
 class CommentSerializer(serializers.ModelSerializer):

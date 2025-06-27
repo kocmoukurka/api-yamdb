@@ -1,8 +1,9 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, status, viewsets, mixins
+from rest_framework import filters, status, viewsets, mixins, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import (AllowAny, IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
@@ -160,6 +161,16 @@ class TitleViewSet(viewsets.ModelViewSet):
 
         return queryset
 
+    # Обработка ошибок валидации
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except serializers.ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
 
 class PermissionMethodNames():
     permission_classes = (
@@ -180,7 +191,10 @@ class ReviewViewSet(PermissionMethodNames, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         title = self.get_title()
-        if Review.objects.filter(title=title, author=self.request.user).exists():
+        if Review.objects.filter(
+            title=title,
+            author=self.request.user
+        ).exists():
             raise ValidationError(  # Используем правильный класс исключения
                 {'detail': 'Вы уже оставляли отзыв на это произведение.'}
             )
