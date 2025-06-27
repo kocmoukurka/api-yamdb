@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from datetime import timedelta
-
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -100,7 +98,6 @@ STATIC_URL = '/static/'
 STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
 
-
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
@@ -118,5 +115,4 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-EMAIL_FILE_PATH = '/tmp/emails'
-
+EMAIL_FILE_PATH = f'{BASE_DIR}/tmp/emails'
