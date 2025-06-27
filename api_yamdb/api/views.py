@@ -16,6 +16,8 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
+from django_filters.rest_framework import DjangoFilterBackend
+
 
 from api.mixins import (
     HTTPMethodNamesMixin,
@@ -35,6 +37,7 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
+from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
@@ -150,9 +153,10 @@ class GenreViewSet(RetrieveUpdateStatusHTTP405, viewsets.ModelViewSet):
 
 class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
     """ViewSet для работы с произведениями (фильмы, книги и др.)."""
-
     queryset = Title.objects.all()
     permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -186,6 +190,7 @@ class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
                 {'error': str(e)},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
 
 
 class ReviewViewSet(
