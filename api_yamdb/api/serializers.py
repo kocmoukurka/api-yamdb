@@ -99,11 +99,16 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
-    rating = serializers.IntegerField(read_only=True)
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
         fields = '__all__'
+
+    def get_rating(self, obj):
+        """Вычисление среднего рейтинга из аннотации"""
+        # Используем аннотацию, которая была добавлена в queryset
+        return getattr(obj, 'avg_rating', None)
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
