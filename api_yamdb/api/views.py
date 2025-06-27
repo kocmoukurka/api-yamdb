@@ -5,17 +5,19 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
-from rest_framework.decorators import (
-    action,
-    api_view,
-    permission_classes,
-)
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
+from django_filters.rest_framework import DjangoFilterBackend
+
 
 from api.mixins import (
     HTTPMethodNamesMixin,
@@ -35,6 +37,7 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
+from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
@@ -150,9 +153,10 @@ class GenreViewSet(RetrieveUpdateStatusHTTP405, viewsets.ModelViewSet):
 
 class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
     """ViewSet для работы с произведениями (фильмы, книги и др.)."""
-
     queryset = Title.objects.all()
     permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -160,22 +164,21 @@ class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
         return TitleWriteSerializer
 
     def get_queryset(self):
-        queryset = super().get_queryset()
-        category_slug = self.request.query_params.get('category')
-        genre_slug = self.request.query_params.get('genre')
-        name = self.request.query_params.get('name')
-        year = self.request.query_params.get('year')
-
-        if category_slug:
-            queryset = queryset.filter(category__slug=category_slug)
-        if genre_slug:
-            queryset = queryset.filter(genre__slug=genre_slug)
-        if name:
-            queryset = queryset.filter(name__icontains=name)
-        if year:
-            queryset = queryset.filter(year=year)
-
+        """Queryset с аннотацией среднего рейтинга"""
+        queryset = Title.objects.annotate(
+            avg_rating=Avg('reviews__score')
+        ).order_by('-year')
         return queryset
+
+    # Обработка ошибок валидации
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except ValidationError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 class ReviewViewSet(
@@ -203,18 +206,9 @@ class ReviewViewSet(
                 {'detail': 'Вы уже оставляли отзыв на это произведение.'}
             )
         serializer.save(author=self.request.user, title=title)
-        self.update_title_rating(title)
 
     def perform_destroy(self, instance):
-        title = instance.title
         instance.delete()
-        self.update_title_rating(title)
-
-    def update_title_rating(self, title):
-        from django.db.models import Avg
-        result = title.reviews.aggregate(average=Avg('score'))
-        title.rating = result['average'] or 0
-        title.save(update_fields=['rating'])
 
 
 class CommentViewSet(
