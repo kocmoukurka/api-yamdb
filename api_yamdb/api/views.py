@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -162,6 +163,13 @@ class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
             return TitleReadSerializer
         return TitleWriteSerializer
 
+    def get_queryset(self):
+        """Queryset с аннотацией среднего рейтинга"""
+        queryset = Title.objects.annotate(
+            avg_rating=Avg('reviews__score')
+        ).order_by('-year')
+        return queryset
+
     # Обработка ошибок валидации
     def create(self, request, *args, **kwargs):
         try:
@@ -198,18 +206,9 @@ class ReviewViewSet(
                 {'detail': 'Вы уже оставляли отзыв на это произведение.'}
             )
         serializer.save(author=self.request.user, title=title)
-        self.update_title_rating(title)
 
     def perform_destroy(self, instance):
-        title = instance.title
         instance.delete()
-        self.update_title_rating(title)
-
-    def update_title_rating(self, title):
-        from django.db.models import Avg
-        result = title.reviews.aggregate(average=Avg('score'))
-        title.rating = result['average'] or 0
-        title.save(update_fields=['rating'])
 
 
 class CommentViewSet(
