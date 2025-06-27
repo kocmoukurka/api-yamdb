@@ -39,6 +39,9 @@ class SignUpSerializer(serializers.Serializer):
         regex=r'^[\w.@+-]+$',
         required=True,
         max_length=MAX_USERNAME_LENGHT,
+        error_messages={
+            'invalid': 'Разрешены только буквы, цифры и символы @/./+/-/_'
+        }
     )
 
     def validate_username(self, value):

@@ -105,21 +105,10 @@ class Title(NamedAbstract):
         null=True,
         blank=True
     )
-    rating = models.IntegerField(
-        verbose_name='Рейтинг',
-        null=True,
-        blank=True
-    )
     description = models.TextField(
         verbose_name='Описание',
         null=True,
         blank=True
-    )
-    image = models.ImageField(
-        upload_to='titles/',
-        null=True,
-        blank=True,
-        verbose_name='Изображение'
     )
 
     class Meta:
