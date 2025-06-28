@@ -22,7 +22,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from api.mixins import (
     HTTPMethodNamesMixin,
     PermissionReviewCommentMixin,
-    RetrieveUpdateStatusHTTP405,
+    RetrieveUpdateStatusHTTP405Mihin,
+    AdminSearchSlugMixin,
 )
 from api.permissions import IsAdmin, IsAdminOrReadOnly
 from api.serializers import (
@@ -129,26 +130,26 @@ class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryViewSet(RetrieveUpdateStatusHTTP405, viewsets.ModelViewSet):
+class CategoryViewSet(
+    RetrieveUpdateStatusHTTP405Mihin,
+    AdminSearchSlugMixin,
+    viewsets.ModelViewSet
+):
     """ViewSet для работы с категориями произведений."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
 
 
-class GenreViewSet(RetrieveUpdateStatusHTTP405, viewsets.ModelViewSet):
+class GenreViewSet(
+    RetrieveUpdateStatusHTTP405Mihin,
+    AdminSearchSlugMixin,
+    viewsets.ModelViewSet
+):
     """ViewSet для работы с жанрами произведений."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (filters.SearchFilter,)
-    search_fields = ('name',)
-    lookup_field = 'slug'
 
 
 class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
@@ -169,16 +170,6 @@ class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
             avg_rating=Avg('reviews__score')
         ).order_by('-year')
         return queryset
-
-    # Обработка ошибок валидации
-    def create(self, request, *args, **kwargs):
-        try:
-            return super().create(request, *args, **kwargs)
-        except ValidationError as e:
-            return Response(
-                {'error': str(e)},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
 
 class ReviewViewSet(
