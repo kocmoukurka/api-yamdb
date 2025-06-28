@@ -1,11 +1,12 @@
 from rest_framework import status
+from rest_framework import filters
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
-from api.permissions import IsAuthorModeratorAdminOrReadOnly
+from api.permissions import IsAuthorModeratorAdminOrReadOnly, IsAdminOrReadOnly
 
 
-class RetrieveUpdateStatusHTTP405:
+class RetrieveUpdateStatusHTTP405Mihin:
     """Миксин для возврата статуса 405 при попытке retrieve/update."""
 
     def retrieve(self, request, *args, **kwargs):
@@ -31,3 +32,16 @@ class PermissionReviewCommentMixin:
         IsAuthenticatedOrReadOnly,
         IsAuthorModeratorAdminOrReadOnly,
     )
+
+
+class AdminSearchSlugMixin:
+    """
+    Миксин для:
+    - Доступа только для админов (остальные - read-only)
+    - Поиска по name
+    - Использования slug как lookup-поля
+    """
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'

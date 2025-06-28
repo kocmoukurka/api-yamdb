@@ -1,7 +1,9 @@
 """Модели для приложения reviews."""
 
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.utils.timezone import now
 
 from reviews.constants import (
     MAX_LINE_LENGTH,
@@ -93,17 +95,21 @@ class Genre(CategoryGenreAbstract):
 class Title(NamedAbstract):
     """Модель произведения (фильмы, книги и др.)."""
 
-    year = models.IntegerField(verbose_name='Год выхода')
+    year = models.IntegerField(
+        validators=[
+            MaxValueValidator(now().year)
+        ],
+        verbose_name='Год выхода')
     genre = models.ManyToManyField(
         Genre,
         verbose_name='Жанр'
     )
     category = models.ForeignKey(
         Category,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         verbose_name='Категория',
         null=True,
-        blank=True
+        blank=False
     )
     description = models.TextField(
         verbose_name='Описание',
@@ -129,7 +135,10 @@ class Review(UserTextPubDateAbstract):
         on_delete=models.CASCADE,
         verbose_name='Произведение'
     )
-    score = models.IntegerField(verbose_name='Оценка отзыва')
+    score = models.IntegerField(validators=[
+        MinValueValidator(1),
+        MaxValueValidator(10)],
+        verbose_name='Оценка отзыва')
 
     class Meta:
         verbose_name = 'Отзыв'
