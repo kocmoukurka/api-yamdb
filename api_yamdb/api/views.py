@@ -18,7 +18,6 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from django_filters.rest_framework import DjangoFilterBackend
 
-
 from api.mixins import (
     HTTPMethodNamesMixin,
     PermissionReviewCommentMixin,
