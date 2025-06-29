@@ -112,7 +112,6 @@ class UserViewSet(viewsets.ModelViewSet):
 
 
 class CategoryViewSet(AdminSlugSearchViewSet):
-
     """ViewSet для работы с категориями произведений."""
 
     queryset = Category.objects.all()
