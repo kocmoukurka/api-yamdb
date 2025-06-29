@@ -15,7 +15,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         # Загрузка пользователей
-        with open(f'{settings.BASE_DIR}/static/data/users.csv', encoding='utf-8') as f:
+        with open(f'{settings.BASE_DIR}/static/data/users.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 User.objects.create(
@@ -40,7 +41,8 @@ class Command(BaseCommand):
                 )
 
         # Загрузка жанров
-        with open(f'{settings.BASE_DIR}/static/data/genre.csv', encoding='utf-8') as f:
+        with open(f'{settings.BASE_DIR}/static/data/genre.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Genre.objects.create(
@@ -50,7 +52,8 @@ class Command(BaseCommand):
                 )
 
         # Загрузка произведений
-        with open(f'{settings.BASE_DIR}/static/data/titles.csv', encoding='utf-8') as f:
+        with open(f'{settings.BASE_DIR}/static/data/titles.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Title.objects.create(
@@ -70,7 +73,8 @@ class Command(BaseCommand):
                 title.genre.add(genre)
 
         # Загрузка отзывов
-        with open(f'{settings.BASE_DIR}/static/data/review.csv', encoding='utf-8') as f:
+        with open(f'{settings.BASE_DIR}/static/data/review.csv',
+                  encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Review.objects.create(
