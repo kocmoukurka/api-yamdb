@@ -116,4 +116,4 @@ SIMPLE_JWT = {
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
-EMAIL_FILE_PATH = f'{BASE_DIR}/tmp/emails'
+EMAIL_FILE_PATH = f'{BASE_DIR}/send_emails'

@@ -1,8 +1,9 @@
-from datetime import datetime
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
+
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -135,16 +136,23 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
-    rating = serializers.SerializerMethodField()
+    rating = serializers.FloatField(
+        default=None,
+        read_only=True,
+        help_text="Средний рейтинг произведения"
+    )
 
     class Meta:
         model = Title
-        fields = '__all__'
-
-    def get_rating(self, obj):
-        """Вычисление среднего рейтинга из аннотации"""
-        # Используем аннотацию, которая была добавлена в queryset
-        return getattr(obj, 'avg_rating', None)
+        fields = (
+            'id',
+            'name',
+            'year',
+            'rating',
+            'description',
+            'genre',
+            'category'
+        )
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -162,16 +170,14 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
-
-    # Добавлена проверка по году выпуска - год не может быть больше текущего
-    def validate_year(self, value):
-        current_year = datetime.now().year
-        if value > current_year:
-            raise serializers.ValidationError(
-                'Год выпуска не может быть больше текущего'
-            )
-        return value
+        fields = (
+            'id',
+            'name',
+            'year',
+            'description',
+            'genre',
+            'category'
+        )
 
     # Добавлена проверка принадлежности хотя бы к одному жанру
     def validate_genre(self, value):
@@ -180,6 +186,34 @@ class TitleWriteSerializer(serializers.ModelSerializer):
                 'Произведение должно принадлежать хотя бы к одному жанру'
             )
         return value
+
+    def to_representation(self, instance):
+        """Преобразуем вывод данных в требуемый формат."""
+        representation = super().to_representation(instance)
+
+        # Добавляем аннотацию среднего рейтинга, если её нет
+        if not hasattr(instance, 'rating'):
+            instance = Title.objects.annotate(
+                rating=Avg('reviews__score')).get(pk=instance.pk)
+
+        representation['rating'] = int(
+            instance.rating) if instance.rating else None
+
+        # Преобразуем вывод жанров
+        representation['genre'] = [
+            {
+                'name': genre.name,
+                'slug': genre.slug
+            } for genre in instance.genre.all()
+        ]
+
+        # Преобразуем вывод категории
+        representation['category'] = {
+            'name': instance.category.name,
+            'slug': instance.category.slug
+        }
+
+        return representation
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -192,7 +226,13 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = '__all__'
+        fields = (
+            'id',
+            'text',
+            'author',
+            'score',
+            'pub_date'
+        )
         read_only_fields = ('title',)
 
     def validate(self, data):
@@ -200,7 +240,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         Проверяет, что пользователь не оставлял отзыв на это произведение.
         """
         request = self.context.get('request')
-        
+
         if request and request.method == 'POST':
             if Review.objects.filter(
                 title=self.context.get('view').get_title(),
@@ -209,7 +249,7 @@ class ReviewSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'detail': 'Вы уже оставляли отзыв на это произведение.'
                 })
-        
+
         return data
 
 
