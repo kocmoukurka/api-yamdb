@@ -5,23 +5,23 @@
 from django.contrib.auth import get_user_model
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
-
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets, mixins
+from rest_framework import filters, mixins, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import (
     AllowAny,
     IsAuthenticated,
-    IsAuthenticatedOrReadOnly
+    IsAuthenticatedOrReadOnly,
 )
 from rest_framework.response import Response
+from reviews.models import Category, Genre, Title
 
 from api.filters import TitleFilter
 from api.permissions import (
     IsAdmin,
     IsAdminOrReadOnly,
-    IsAuthorModeratorAdminOrReadOnly
+    IsAuthorModeratorAdminOrReadOnly,
 )
 from api.serializers import (
     CategorySerializer,
@@ -35,7 +35,6 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
-from reviews.models import Category, Genre, Title
 
 User = get_user_model()
 
@@ -131,7 +130,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с произведениями (фильмы, книги и др.)."""
 
     queryset = Title.objects.annotate(
-        avg_rating=Avg('reviews__score')
+        rating=Avg('reviews__score')
     ).order_by('-year')
     permission_classes = (IsAdminOrReadOnly,)
     filter_backends = (
