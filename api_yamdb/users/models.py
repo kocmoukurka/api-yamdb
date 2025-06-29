@@ -1,33 +1,33 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 
-from .constants import (
+from users.constants import (
     CONFIRMATION_CODE_LENGTH,
-    MAX_EMAIL_LENGHT,
+    MAX_EMAIL_LENGTH,
     MAX_FIRSTNAME_LENGTH,
     MAX_LASTNAME_LENGTH,
-    MAX_ROLE_LENGTH,
-    MAX_USERNAME_LENGHT,
+    MAX_USERNAME_LENGTH,
     ROLE_ADMIN,
     ROLE_MODERATOR,
     ROLE_USER,
 )
-from .validators import username_validator
+from users.validators import username_validator
 
 
-ROLES = (
-    (ROLE_USER, 'Аутентифицированный пользователь'),
-    (ROLE_MODERATOR, 'Модератор'),
-    (ROLE_ADMIN, 'Администратор'),
-)
+class RoleChoices(models.TextChoices):
+    """Перечисление ролей пользователей для поля 'role' модели User."""
+
+    USER = ROLE_USER, 'Аутентифицированный пользователь'
+    MODERATOR = ROLE_MODERATOR, 'Модератор'
+    ADMIN = ROLE_ADMIN, 'Администратор'
 
 
-class CustomUser(AbstractUser):
+class User(AbstractUser):
     """Кастомная модель пользователя с расширенными полями."""
 
     username = models.CharField(
         verbose_name='Логин',
-        max_length=MAX_USERNAME_LENGHT,
+        max_length=MAX_USERNAME_LENGTH,
         unique=True,
         help_text=(
             'Обязательное поле. Не больше 150 символов. '
@@ -37,7 +37,7 @@ class CustomUser(AbstractUser):
     )
     email = models.EmailField(
         verbose_name='Электронная почта',
-        max_length=MAX_EMAIL_LENGHT,
+        max_length=MAX_EMAIL_LENGTH,
         unique=True,
         help_text='Обязательное поле.',
     )
@@ -57,9 +57,9 @@ class CustomUser(AbstractUser):
     )
     role = models.CharField(
         verbose_name='Роль',
-        max_length=MAX_ROLE_LENGTH,
-        choices=ROLES,
-        default=ROLE_USER,
+        max_length=max(len(value) for value, _ in RoleChoices.choices),
+        choices=RoleChoices.choices,
+        default=RoleChoices.USER,
     )
     confirmation_code = models.CharField(
         verbose_name='Код подтверждения',
@@ -79,9 +79,9 @@ class CustomUser(AbstractUser):
     @property
     def is_admin(self):
         """Проверяет, является ли пользователь администратором."""
-        return self.is_superuser or self.role == ROLE_ADMIN
+        return self.is_superuser or self.role == RoleChoices.ADMIN
 
     @property
     def is_moderator(self):
         """Проверяет, является ли пользователь модератором."""
-        return self.role == ROLE_MODERATOR
+        return self.role == RoleChoices.MODERATOR

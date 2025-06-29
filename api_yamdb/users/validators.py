@@ -1,29 +1,29 @@
+import re
+
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator
 
-
-regex_validator = RegexValidator(
-    regex=r'^[\w.@+-]+$',
-    message='Разрешены только буквы, цифры и символы @/./+/-/_',
-    code='invalid_username'
-)
+from users.constants import ALLOWED_USERNAME_PATTERN
 
 
 def username_validator(username):
-    """Валидатор для проверки имени пользователя.
-
+    """Валидатор для проверки логина пользователя.
     Проверяет:
-    1. Что имя пользователя не равно 'me'
-    2. Что имя соответствует regex-паттерну
-
+    1. Что логин не равен 'me'.
+    2. Что в логине не используются недопустимые символы.
     Args:
-        username (str): Проверяемое имя пользователя
-
+        username (str): Проверяемый логин пользователя.
     Raises:
-        ValidationError: Если имя не проходит валидацию
+        ValidationError: Если логин не проходит валидацию.
     """
     if username == 'me':
         raise ValidationError(
             f'Логин "{username}" запрещён.'
         )
-    regex_validator(username)
+    invalid_chars = re.sub(ALLOWED_USERNAME_PATTERN, '', username)
+    if invalid_chars:
+        raise ValidationError(
+            f'Недопустимые символы в логине {username}: '
+            f'{"".join(set(invalid_chars))}. '
+            'Разрешены только буквы, цифры и символы @/./+/-/_'
+        )
+    return username
