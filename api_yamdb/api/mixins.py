@@ -4,9 +4,10 @@ from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from api.permissions import IsAuthorModeratorAdminOrReadOnly, IsAdminOrReadOnly
+from users.validators import username_validator
 
 
-class RetrieveUpdateStatusHTTP405Mihin:
+class RetrieveUpdateStatusHTTP405Mixin:
     """Миксин для возврата статуса 405 при попытке retrieve/update."""
 
     def retrieve(self, request, *args, **kwargs):
@@ -45,3 +46,13 @@ class AdminSearchSlugMixin:
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
     lookup_field = 'slug'
+
+
+class UsernameValidationMixin:
+    '''Миксин для валидации логина пользователя.
+    Проверяет:
+    1. Что логин не равен 'me'.
+    2. Что в логине не используются недопустимые символы.
+    '''
+    def validate_username(self, username):
+        return username_validator(username)
