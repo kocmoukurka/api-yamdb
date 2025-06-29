@@ -1,4 +1,5 @@
 import django_filters
+
 from reviews.models import Title, Genre, Category
 
 
@@ -18,10 +19,6 @@ class TitleFilter(django_filters.FilterSet):
         to_field_name='slug',
         queryset=Category.objects.all()
     )
-
-    # Поле фильтрации по году выхода
-    year = django_filters.NumberFilter(field_name='year')
-    name = django_filters.CharFilter(field_name='name')
 
     class Meta:
         model = Title

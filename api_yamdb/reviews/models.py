@@ -49,9 +49,8 @@ class SlugAbstract(NamedAbstract):
         unique=True
     )
 
-    class Meta:
+    class Meta(NamedAbstract.Meta):
         abstract = True
-        ordering = ('-pub_date',)
 
 
 class UserTextPubDateAbstract(models.Model):
@@ -85,7 +84,7 @@ class UserTextPubDateAbstract(models.Model):
 class Category(SlugAbstract):
     """Модель категории произведений."""
 
-    class Meta:
+    class Meta(SlugAbstract.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -93,7 +92,7 @@ class Category(SlugAbstract):
 class Genre(SlugAbstract):
     """Модель жанра произведений."""
 
-    class Meta:
+    class Meta(SlugAbstract.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -149,7 +148,7 @@ class Review(UserTextPubDateAbstract):
         help_text='Введите оценку от 1 до 10'
     )
 
-    class Meta:
+    class Meta(UserTextPubDateAbstract.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         default_related_name = 'reviews'
@@ -170,7 +169,7 @@ class Comment(UserTextPubDateAbstract):
         verbose_name='Отзыв'
     )
 
-    class Meta:
+    class Meta(UserTextPubDateAbstract.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'
