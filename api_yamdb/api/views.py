@@ -3,26 +3,22 @@
 """
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
 from django.core.exceptions import ValidationError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import AccessToken
-from django_filters.rest_framework import DjangoFilterBackend
 
+from api.filters import TitleFilter
 from api.mixins import (
+    AdminSearchSlugMixin,
     HTTPMethodNamesMixin,
     PermissionReviewCommentMixin,
-    RetrieveUpdateStatusHTTP405Mihin,
-    AdminSearchSlugMixin,
+    RetrieveUpdateStatusHTTP405Mixin,
 )
 from api.permissions import IsAdmin, IsAdminOrReadOnly
 from api.serializers import (
@@ -37,7 +33,6 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
-from api.filters import TitleFilter
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
@@ -46,32 +41,10 @@ User = get_user_model()
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
-    """ Обрабатывает запрос на регистрацию нового пользователя.
-    Отправляет письмо с кодом подтверждения на указанный email.
-    """
+    """ Обрабатывает запрос на регистрацию нового пользователя."""
     serializer = SignUpSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-
-    email = serializer.validated_data['email']
-    username = serializer.validated_data['username']
-
-    user, created = User.objects.get_or_create(
-        email=email,
-        username=username
-    )
-
-    confirmation_code = default_token_generator.make_token(user)
-    user.confirmation_code = confirmation_code
-    user.save()
-
-    send_mail(
-        subject='YaMDb confirmation code',
-        message=f'Your confirmation code: {confirmation_code}',
-        from_email='yamdb@example.com',
-        recipient_list=[email],
-        fail_silently=False,
-    )
-
+    serializer.save()
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -81,20 +54,7 @@ def get_token(request):
     """Генерирует JWT токен для пользователя после подтверждения кода."""
     serializer = TokenSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-
-    username = serializer.validated_data['username']
-    confirmation_code = serializer.validated_data['confirmation_code']
-
-    user = get_object_or_404(User, username=username)
-
-    if not default_token_generator.check_token(user, confirmation_code):
-        return Response(
-            {'confirmation_code': 'Invalid confirmation code'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    token = AccessToken.for_user(user)
-    return Response({'token': str(token)}, status=status.HTTP_200_OK)
+    return Response(serializer.save(), status=status.HTTP_200_OK)
 
 
 class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
@@ -108,17 +68,18 @@ class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
     search_fields = ('username',)
 
     @action(
-        methods=['GET', 'PATCH'],
         detail=False,
-        permission_classes=[IsAuthenticated],
+        permission_classes=(IsAuthenticated,),
         url_path='me'
     )
     def me(self, request):
-        """Получение и обновление данных текущего пользователя."""
-        if request.method == 'GET':
-            serializer = UserMeSerializer(request.user)
-            return Response(serializer.data)
+        """Получение данных текущего пользователя."""
+        serializer = UserMeSerializer(request.user)
+        return Response(serializer.data)
 
+    @me.mapping.patch
+    def update_me(self, request):
+        """Обновление данных текущего пользователя."""
         serializer = UserMeSerializer(
             request.user,
             data=request.data,
@@ -130,7 +91,7 @@ class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
 
 
 class CategoryViewSet(
-    RetrieveUpdateStatusHTTP405Mihin,
+    RetrieveUpdateStatusHTTP405Mixin,
     AdminSearchSlugMixin,
     viewsets.ModelViewSet
 ):
@@ -141,7 +102,7 @@ class CategoryViewSet(
 
 
 class GenreViewSet(
-    RetrieveUpdateStatusHTTP405Mihin,
+    RetrieveUpdateStatusHTTP405Mixin,
     AdminSearchSlugMixin,
     viewsets.ModelViewSet
 ):
