@@ -200,7 +200,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         Проверяет, что пользователь не оставлял отзыв на это произведение.
         """
         request = self.context.get('request')
-        
+
         if request and request.method == 'POST':
             if Review.objects.filter(
                 title=self.context.get('view').get_title(),
@@ -209,7 +209,7 @@ class ReviewSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'detail': 'Вы уже оставляли отзыв на это произведение.'
                 })
-        
+
         return data
 
 

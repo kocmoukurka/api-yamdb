@@ -3,23 +3,25 @@
 """
 
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import filters, status, viewsets
+from rest_framework import filters, status, viewsets, mixins
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.filters import OrderingFilter
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly
+)
 from rest_framework.response import Response
 
 from api.filters import TitleFilter
-from api.mixins import (
-    AdminSearchSlugMixin,
-    HTTPMethodNamesMixin,
-    PermissionReviewCommentMixin,
-    RetrieveUpdateStatusHTTP405Mixin,
+from api.permissions import (
+    IsAdmin,
+    IsAdminOrReadOnly,
+    IsAuthorModeratorAdminOrReadOnly
 )
 from api.serializers import (
     CategorySerializer,
@@ -33,7 +35,7 @@ from api.serializers import (
     UserMeSerializer,
     UserSerializer,
 )
-from reviews.models import Category, Genre, Review, Title
+from reviews.models import Category, Genre, Title
 
 User = get_user_model()
 
@@ -110,14 +112,12 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-
 class CategoryViewSet(AdminSlugSearchViewSet):
 
     """ViewSet для работы с категориями произведений."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-
 
 
 class GenreViewSet(AdminSlugSearchViewSet):
