@@ -9,9 +9,15 @@ from reviews.constants import (
     MAX_LINE_LENGTH,
     MAX_NAME_LENGTH,
     MAX_SLUG_LENGHT,
+    MIN_SCORE,
+    MAX_SCORE
 )
 
 User = get_user_model()
+
+
+def get_current_year():
+    return now().year
 
 
 class NamedAbstract(models.Model):
@@ -26,9 +32,13 @@ class NamedAbstract(models.Model):
 
     class Meta:
         abstract = True
+        ordering = ('name',)
+
+    def __str__(self):
+        return self.name[:MAX_LINE_LENGTH]
 
 
-class CategoryGenreAbstract(NamedAbstract):
+class SlugAbstract(NamedAbstract):
     """Абстрактная модель для категорий и жанров.
     Содержит дополнительное поле slug для уникального адреса ресурса.
     """
@@ -39,7 +49,7 @@ class CategoryGenreAbstract(NamedAbstract):
         unique=True
     )
 
-    class Meta:
+    class Meta(NamedAbstract.Meta):
         abstract = True
 
 
@@ -67,38 +77,31 @@ class UserTextPubDateAbstract(models.Model):
         abstract = True
         ordering = ('-pub_date',)
 
+    def __str__(self):
+        return self.text[:MAX_LINE_LENGTH]
 
-class Category(CategoryGenreAbstract):
+
+class Category(SlugAbstract):
     """Модель категории произведений."""
 
-    class Meta:
+    class Meta(SlugAbstract.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
-        ordering = ('name',)
-
-    def __str__(self):
-        return self.name[:MAX_LINE_LENGTH]
 
 
-class Genre(CategoryGenreAbstract):
+class Genre(SlugAbstract):
     """Модель жанра произведений."""
 
-    class Meta:
+    class Meta(SlugAbstract.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
-        ordering = ('name',)
-
-    def __str__(self):
-        return self.name[:MAX_LINE_LENGTH]
 
 
 class Title(NamedAbstract):
     """Модель произведения (фильмы, книги и др.)."""
 
-    year = models.IntegerField(
-        validators=[
-            MaxValueValidator(now().year)
-        ],
+    year = models.SmallIntegerField(
+        validators=(MaxValueValidator(get_current_year),),
         verbose_name='Год выхода')
     genre = models.ManyToManyField(
         Genre,
@@ -107,9 +110,8 @@ class Title(NamedAbstract):
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
-        verbose_name='Категория',
         null=True,
-        blank=False
+        verbose_name='Категория',
     )
     description = models.TextField(
         verbose_name='Описание',
@@ -123,9 +125,6 @@ class Title(NamedAbstract):
         default_related_name = 'titles'
         ordering = ('-year',)
 
-    def __str__(self):
-        return self.name[:MAX_LINE_LENGTH]
-
 
 class Review(UserTextPubDateAbstract):
     """Модель отзыва на произведение."""
@@ -135,25 +134,30 @@ class Review(UserTextPubDateAbstract):
         on_delete=models.CASCADE,
         verbose_name='Произведение'
     )
-    score = models.IntegerField(validators=[
-        MinValueValidator(1),
-        MaxValueValidator(10)],
-        verbose_name='Оценка отзыва')
+    score = models.PositiveSmallIntegerField(
+        validators=(
+            MinValueValidator(
+                MIN_SCORE,
+                message='Оценка не может быть меньше 1'
+            ),
+            MaxValueValidator(
+                MAX_SCORE,
+                message='Оценка не может быть больше 10')
+        ),
+        verbose_name='Оценка отзыва',
+        help_text='Введите оценку от 1 до 10'
+    )
 
-    class Meta:
+    class Meta(UserTextPubDateAbstract.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         default_related_name = 'reviews'
-        constraints = [
+        constraints = (
             models.UniqueConstraint(
                 fields=('title', 'author'),
                 name='unique_review_per_author'
-            )
-        ]
-        ordering = ('-pub_date',)
-
-    def __str__(self):
-        return self.text[:MAX_LINE_LENGTH]
+            ),
+        )
 
 
 class Comment(UserTextPubDateAbstract):
@@ -165,11 +169,7 @@ class Comment(UserTextPubDateAbstract):
         verbose_name='Отзыв'
     )
 
-    class Meta:
+    class Meta(UserTextPubDateAbstract.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
         default_related_name = 'comments'
-        ordering = ('-pub_date',)
-
-    def __str__(self):
-        return self.text[:MAX_LINE_LENGTH]

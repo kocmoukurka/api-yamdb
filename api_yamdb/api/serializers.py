@@ -195,13 +195,22 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ('title',)
 
-    def validate_score(self, value):
-        """Проверяет, что оценка находится в диапазоне от 1 до 10."""
-        if not 1 <= value <= 10:
-            raise serializers.ValidationError(
-                'Оценка должна быть в диапазоне от 1 до 10.'
-            )
-        return value
+    def validate(self, data):
+        """
+        Проверяет, что пользователь не оставлял отзыв на это произведение.
+        """
+        request = self.context.get('request')
+        
+        if request and request.method == 'POST':
+            if Review.objects.filter(
+                title=self.context.get('view').get_title(),
+                author=request.user
+            ).exists():
+                raise serializers.ValidationError({
+                    'detail': 'Вы уже оставляли отзыв на это произведение.'
+                })
+        
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):

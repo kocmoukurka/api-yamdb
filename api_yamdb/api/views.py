@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -20,7 +21,6 @@ from api.mixins import (
     PermissionReviewCommentMixin,
     RetrieveUpdateStatusHTTP405Mixin,
 )
-from api.permissions import IsAdmin, IsAdminOrReadOnly
 from api.serializers import (
     CategorySerializer,
     CommentSerializer,
@@ -36,6 +36,25 @@ from api.serializers import (
 from reviews.models import Category, Genre, Review, Title
 
 User = get_user_model()
+
+
+class AdminSlugSearchViewSet(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    """
+    Базовый ViewSet для моделей с:
+    - slug-идентификацией
+    - поиском по name
+    - ограниченными методами (GET-list, POST, DELETE)
+    - админ-контролем доступа
+    """
+    permission_classes = (IsAdminOrReadOnly,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
 
 
 @api_view(['POST'])
@@ -57,7 +76,7 @@ def get_token(request):
     return Response(serializer.save(), status=status.HTTP_200_OK)
 
 
-class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
+class UserViewSet(viewsets.ModelViewSet):
     """ViewSet для управления пользователями."""
 
     queryset = User.objects.all()
@@ -66,6 +85,7 @@ class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
     permission_classes = (IsAdmin,)
     filter_backends = (filters.SearchFilter,)
     search_fields = ('username',)
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     @action(
         detail=False,
@@ -90,89 +110,79 @@ class UserViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class CategoryViewSet(
-    RetrieveUpdateStatusHTTP405Mixin,
-    AdminSearchSlugMixin,
-    viewsets.ModelViewSet
-):
+
+class CategoryViewSet(AdminSlugSearchViewSet):
+
     """ViewSet для работы с категориями произведений."""
 
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
-class GenreViewSet(
-    RetrieveUpdateStatusHTTP405Mixin,
-    AdminSearchSlugMixin,
-    viewsets.ModelViewSet
-):
+
+class GenreViewSet(AdminSlugSearchViewSet):
     """ViewSet для работы с жанрами произведений."""
 
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
 
 
-class TitleViewSet(HTTPMethodNamesMixin, viewsets.ModelViewSet):
+class TitleViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с произведениями (фильмы, книги и др.)."""
-    queryset = Title.objects.all()
+
+    queryset = Title.objects.annotate(
+        avg_rating=Avg('reviews__score')
+    ).order_by('-year')
     permission_classes = (IsAdminOrReadOnly,)
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (
+        DjangoFilterBackend,
+        OrderingFilter
+    )
     filterset_class = TitleFilter
+    http_method_names = ('get', 'post', 'patch', 'delete')
+    ordering_fields = ('name', 'year',)
+    ordering = ('-year')
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
             return TitleReadSerializer
         return TitleWriteSerializer
 
-    def get_queryset(self):
-        """Queryset с аннотацией среднего рейтинга"""
-        queryset = Title.objects.annotate(
-            avg_rating=Avg('reviews__score')
-        ).order_by('-year')
-        return queryset
 
-
-class ReviewViewSet(
-    HTTPMethodNamesMixin,
-    PermissionReviewCommentMixin,
-    viewsets.ModelViewSet
-):
-    """ViewSet для работы с отзывами на произведения."""
-
-    serializer_class = ReviewSerializer
+class BaseReviewCommentViewSet(viewsets.ModelViewSet):
+    """Базовый ViewSet для отзывов и комментариев."""
+    permission_classes = (
+        IsAuthenticatedOrReadOnly,
+        IsAuthorModeratorAdminOrReadOnly
+    )
+    http_method_names = ('get', 'post', 'patch', 'delete')
 
     def get_title(self):
         return get_object_or_404(Title, id=self.kwargs.get('title_id'))
+
+
+class ReviewViewSet(BaseReviewCommentViewSet):
+    """ViewSet для работы с отзывами на произведения."""
+
+    serializer_class = ReviewSerializer
 
     def get_queryset(self):
         return self.get_title().reviews.all()
 
     def perform_create(self, serializer):
-        title = self.get_title()
-        if Review.objects.filter(
-            title=title,
-            author=self.request.user
-        ).exists():
-            raise ValidationError(
-                {'detail': 'Вы уже оставляли отзыв на это произведение.'}
-            )
-        serializer.save(author=self.request.user, title=title)
-
-    def perform_destroy(self, instance):
-        instance.delete()
+        serializer.save(author=self.request.user, title=self.get_title())
 
 
-class CommentViewSet(
-    HTTPMethodNamesMixin,
-    PermissionReviewCommentMixin,
-    viewsets.ModelViewSet
-):
+class CommentViewSet(BaseReviewCommentViewSet):
     """ViewSet для работы с комментариями к отзывам."""
 
     serializer_class = CommentSerializer
 
     def get_review(self):
-        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
+        return get_object_or_404(
+            self.get_title().reviews.all(),
+            id=self.kwargs.get('review_id')
+        )
 
     def get_queryset(self):
         return self.get_review().comments.all()
