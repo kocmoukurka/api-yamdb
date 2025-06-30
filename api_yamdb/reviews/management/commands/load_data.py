@@ -10,12 +10,24 @@ User = get_user_model()
 
 
 class Command(BaseCommand):
-    help = 'Load data from csv files'
+    help = 'Загрузка данных из csv-файлов'
 
     def handle(self, *args, **options):
+        load_data_dir = f'{settings.BASE_DIR}/static/data/'
+        category_genre_fields = {
+            'id': 'id',
+            'name': 'name',
+            'slug': 'slug'
+        }
+        id_text_author_pub_date_fields = {
+            'id': 'id',
+            'text': 'text',
+            'author_id': 'author',
+            'pub_date': 'pub_date'
+        }
         data_to_load = {
             User: {
-                'file': f'{settings.BASE_DIR}/static/data/users.csv',
+                'file': f'{load_data_dir}users.csv',
                 'fields': {
                     'id': 'id',
                     'username': 'username',
@@ -28,25 +40,17 @@ class Command(BaseCommand):
                 'relations': {}
             },
             Category: {
-                'file': f'{settings.BASE_DIR}/static/data/category.csv',
-                'fields': {
-                    'id': 'id',
-                    'name': 'name',
-                    'slug': 'slug'
-                },
+                'file': f'{load_data_dir}category.csv',
+                'fields': category_genre_fields,
                 'relations': {}
             },
             Genre: {
-                'file': f'{settings.BASE_DIR}/static/data/genre.csv',
-                'fields': {
-                    'id': 'id',
-                    'name': 'name',
-                    'slug': 'slug'
-                },
+                'file': f'{load_data_dir}genre.csv',
+                'fields': category_genre_fields,
                 'relations': {}
             },
             Title: {
-                'file': f'{settings.BASE_DIR}/static/data/titles.csv',
+                'file': f'{load_data_dir}titles.csv',
                 'fields': {
                     'id': 'id',
                     'name': 'name',
@@ -56,25 +60,17 @@ class Command(BaseCommand):
                 'relations': {}
             },
             Review: {
-                'file': f'{settings.BASE_DIR}/static/data/review.csv',
-                'fields': {
-                    'id': 'id',
+                'file': f'{load_data_dir}review.csv',
+                'fields': id_text_author_pub_date_fields | {
                     'title_id': 'title_id',
-                    'text': 'text',
-                    'author_id': 'author',
                     'score': 'score',
-                    'pub_date': 'pub_date'
                 },
                 'relations': {}
             },
             Comment: {
-                'file': f'{settings.BASE_DIR}/static/data/comments.csv',
-                'fields': {
-                    'id': 'id',
+                'file': f'{load_data_dir}comments.csv',
+                'fields': id_text_author_pub_date_fields | {
                     'review_id': 'review_id',
-                    'text': 'text',
-                    'author_id': 'author',
-                    'pub_date': 'pub_date'
                 },
                 'relations': {}
             }
@@ -95,13 +91,16 @@ class Command(BaseCommand):
                 model.objects.bulk_create(objects_to_create)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'Успешно загружено {len(objects_to_create)} {model.__name__} записей'
+                        (
+                            f'Успешно загружено {len(objects_to_create)}'
+                            ' {model.__name__} записей'
+                        )
                     )
                 )
 
-        # Загрузка связей между жанрами и произведениями
+            # Загрузка связей между жанрами и произведениями
         genre_title_objects = []
-        with open(f'{settings.BASE_DIR}/static/data/genre_title.csv', encoding='utf-8') as f:
+        with open(f'{load_data_dir}genre_title.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 title = Title.objects.get(id=row['title_id'])
@@ -111,6 +110,9 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f'Успешно загружено {len(genre_title_objects)} genre-title связей'
+                (
+                    f'Успешно загружено {len(genre_title_objects)}'
+                    ' genre-title связей'
+                )
             )
         )
