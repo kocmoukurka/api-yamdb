@@ -1,9 +1,15 @@
-from datetime import datetime
 from django.contrib.auth import get_user_model
-from rest_framework import serializers
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
+from django.db.models import Avg
+from django.shortcuts import get_object_or_404
 
+from rest_framework import serializers
+from rest_framework_simplejwt.tokens import AccessToken
+
+from api.mixins import UsernameValidationMixin
 from reviews.models import Category, Comment, Genre, Review, Title
-from users.constants import MAX_EMAIL_LENGHT, MAX_USERNAME_LENGHT
+from users.constants import MAX_EMAIL_LENGTH, MAX_USERNAME_LENGTH
 
 User = get_user_model()
 
@@ -26,32 +32,21 @@ class UserSerializer(serializers.ModelSerializer):
 class UserMeSerializer(UserSerializer):
     """Сериализатор для эндпоинта users/me/."""
 
-    role = serializers.CharField(read_only=True)
+    class Meta(UserSerializer.Meta):
+        read_only_fields = ('role',)
 
 
-class SignUpSerializer(serializers.Serializer):
+class SignUpSerializer(serializers.Serializer, UsernameValidationMixin):
     """Сериализатор для регистрации пользователей."""
 
     email = serializers.EmailField(
         required=True,
-        max_length=MAX_EMAIL_LENGHT
+        max_length=MAX_EMAIL_LENGTH
     )
-    username = serializers.RegexField(
-        regex=r'^[\w.@+-]+$',
+    username = serializers.CharField(
         required=True,
-        max_length=MAX_USERNAME_LENGHT,
-        error_messages={
-            'invalid': 'Разрешены только буквы, цифры и символы @/./+/-/_'
-        }
+        max_length=MAX_USERNAME_LENGTH,
     )
-
-    def validate_username(self, value):
-        """Проверяет, что username не равен 'me'."""
-        if value.lower() == 'me':
-            raise serializers.ValidationError(
-                'Использовать имя "me" в качестве username запрещено.'
-            )
-        return value
 
     def validate(self, data):
         """Проверяет уникальность связки username и email."""
@@ -70,12 +65,54 @@ class SignUpSerializer(serializers.Serializer):
             )
         return data
 
+    def create(self, validated_data):
+        """
+        Создаёт пользователя, генерирует confirmation_code и отправляет email.
+        """
+        email = validated_data['email']
+        username = validated_data['username']
+        user, _ = User.objects.get_or_create(
+            email=email,
+            username=username
+        )
+
+        confirmation_code = default_token_generator.make_token(user)
+        user.confirmation_code = confirmation_code
+        user.save()
+
+        send_mail(
+            subject='YaMDb confirmation code',
+            message=f'Your confirmation code: {confirmation_code}',
+            from_email='yamdb@example.com',
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        return user
+
 
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для получения JWT-токена."""
 
     username = serializers.CharField(required=True)
     confirmation_code = serializers.CharField(required=True)
+
+    def validate(self, data):
+        """Проверяет корректность confirmation_code для указанного username."""
+        username = data.get('username')
+        confirmation_code = data.get('confirmation_code')
+        user = get_object_or_404(User, username=username)
+
+        if not default_token_generator.check_token(user, confirmation_code):
+            raise serializers.ValidationError({
+                'confirmation_code': 'Неверный код подтверждения.'
+            })
+        self.user = user
+        return data
+
+    def save(self, **kwargs):
+        """Генерирует JWT-токен для пользователя."""
+        token = AccessToken.for_user(self.user)
+        return {'token': str(token)}
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -99,16 +136,23 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
-    rating = serializers.SerializerMethodField()
+    rating = serializers.FloatField(
+        default=None,
+        read_only=True,
+        help_text="Средний рейтинг произведения"
+    )
 
     class Meta:
         model = Title
-        fields = '__all__'
-
-    def get_rating(self, obj):
-        """Вычисление среднего рейтинга из аннотации"""
-        # Используем аннотацию, которая была добавлена в queryset
-        return getattr(obj, 'avg_rating', None)
+        fields = (
+            'id',
+            'name',
+            'year',
+            'rating',
+            'description',
+            'genre',
+            'category'
+        )
 
 
 class TitleWriteSerializer(serializers.ModelSerializer):
@@ -126,16 +170,14 @@ class TitleWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
-
-    # Добавлена проверка по году выпуска - год не может быть больше текущего
-    def validate_year(self, value):
-        current_year = datetime.now().year
-        if value > current_year:
-            raise serializers.ValidationError(
-                'Год выпуска не может быть больше текущего'
-            )
-        return value
+        fields = (
+            'id',
+            'name',
+            'year',
+            'description',
+            'genre',
+            'category'
+        )
 
     # Добавлена проверка принадлежности хотя бы к одному жанру
     def validate_genre(self, value):
@@ -144,6 +186,34 @@ class TitleWriteSerializer(serializers.ModelSerializer):
                 'Произведение должно принадлежать хотя бы к одному жанру'
             )
         return value
+
+    def to_representation(self, instance):
+        """Преобразуем вывод данных в требуемый формат."""
+        representation = super().to_representation(instance)
+
+        # Добавляем аннотацию среднего рейтинга, если её нет
+        if not hasattr(instance, 'rating'):
+            instance = Title.objects.annotate(
+                rating=Avg('reviews__score')).get(pk=instance.pk)
+
+        representation['rating'] = int(
+            instance.rating) if instance.rating else None
+
+        # Преобразуем вывод жанров
+        representation['genre'] = [
+            {
+                'name': genre.name,
+                'slug': genre.slug
+            } for genre in instance.genre.all()
+        ]
+
+        # Преобразуем вывод категории
+        representation['category'] = {
+            'name': instance.category.name,
+            'slug': instance.category.slug
+        }
+
+        return representation
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -156,16 +226,31 @@ class ReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Review
-        fields = '__all__'
+        fields = (
+            'id',
+            'text',
+            'author',
+            'score',
+            'pub_date'
+        )
         read_only_fields = ('title',)
 
-    def validate_score(self, value):
-        """Проверяет, что оценка находится в диапазоне от 1 до 10."""
-        if not 1 <= value <= 10:
-            raise serializers.ValidationError(
-                'Оценка должна быть в диапазоне от 1 до 10.'
-            )
-        return value
+    def validate(self, data):
+        """
+        Проверяет, что пользователь не оставлял отзыв на это произведение.
+        """
+        request = self.context.get('request')
+
+        if request and request.method == 'POST':
+            if Review.objects.filter(
+                title=self.context.get('view').get_title(),
+                author=request.user
+            ).exists():
+                raise serializers.ValidationError({
+                    'detail': 'Вы уже оставляли отзыв на это произведение.'
+                })
+
+        return data
 
 
 class CommentSerializer(serializers.ModelSerializer):
