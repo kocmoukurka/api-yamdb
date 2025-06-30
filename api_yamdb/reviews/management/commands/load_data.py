@@ -1,11 +1,10 @@
 import csv
 
-from django.contrib.auth import get_user_model
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
 
 from reviews.models import Category, Genre, Title, Review, Comment
-
 
 User = get_user_model()
 
@@ -14,87 +13,104 @@ class Command(BaseCommand):
     help = 'Load data from csv files'
 
     def handle(self, *args, **options):
-        # Загрузка пользователей
-        with open(f'{settings.BASE_DIR}/static/data/users.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                User.objects.create(
-                    id=row['id'],
-                    username=row['username'],
-                    email=row['email'],
-                    role=row['role'],
-                    bio=row['bio'],
-                    first_name=row['first_name'],
-                    last_name=row['last_name']
+        data_to_load = {
+            User: {
+                'file': f'{settings.BASE_DIR}/static/data/users.csv',
+                'fields': {
+                    'id': 'id',
+                    'username': 'username',
+                    'email': 'email',
+                    'role': 'role',
+                    'bio': 'bio',
+                    'first_name': 'first_name',
+                    'last_name': 'last_name'
+                },
+                'relations': {}
+            },
+            Category: {
+                'file': f'{settings.BASE_DIR}/static/data/category.csv',
+                'fields': {
+                    'id': 'id',
+                    'name': 'name',
+                    'slug': 'slug'
+                },
+                'relations': {}
+            },
+            Genre: {
+                'file': f'{settings.BASE_DIR}/static/data/genre.csv',
+                'fields': {
+                    'id': 'id',
+                    'name': 'name',
+                    'slug': 'slug'
+                },
+                'relations': {}
+            },
+            Title: {
+                'file': f'{settings.BASE_DIR}/static/data/titles.csv',
+                'fields': {
+                    'id': 'id',
+                    'name': 'name',
+                    'year': 'year',
+                    'category_id': 'category'
+                },
+                'relations': {}
+            },
+            Review: {
+                'file': f'{settings.BASE_DIR}/static/data/review.csv',
+                'fields': {
+                    'id': 'id',
+                    'title_id': 'title_id',
+                    'text': 'text',
+                    'author_id': 'author',
+                    'score': 'score',
+                    'pub_date': 'pub_date'
+                },
+                'relations': {}
+            },
+            Comment: {
+                'file': f'{settings.BASE_DIR}/static/data/comments.csv',
+                'fields': {
+                    'id': 'id',
+                    'review_id': 'review_id',
+                    'text': 'text',
+                    'author_id': 'author',
+                    'pub_date': 'pub_date'
+                },
+                'relations': {}
+            }
+        }
+
+        # Загрузка основных данных
+        for model, config in data_to_load.items():
+            objects_to_create = []
+            with open(config['file'], encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    fields = {}
+                    for field, column in config['fields'].items():
+                        fields[field] = row[column]
+                    objects_to_create.append(model(**fields))
+
+            if objects_to_create:
+                model.objects.bulk_create(objects_to_create)
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f'Успешно загружено {len(objects_to_create)} {model.__name__} записей'
+                    )
                 )
 
-        # Загрузка категорий
-        with open(f'{settings.BASE_DIR}/static/data/category.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Category.objects.create(
-                    id=row['id'],
-                    name=row['name'],
-                    slug=row['slug']
-                )
-
-        # Загрузка жанров
-        with open(f'{settings.BASE_DIR}/static/data/genre.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Genre.objects.create(
-                    id=row['id'],
-                    name=row['name'],
-                    slug=row['slug']
-                )
-
-        # Загрузка произведений
-        with open(f'{settings.BASE_DIR}/static/data/titles.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Title.objects.create(
-                    id=row['id'],
-                    name=row['name'],
-                    year=row['year'],
-                    category_id=row['category']
-                )
-
-        # Загрузка связей жанров и произведений
-        with open(f'{settings.BASE_DIR}/static/data/genre_title.csv',
-                  encoding='utf-8') as f:
+        # Загрузка связей между жанрами и произведениями
+        genre_title_objects = []
+        with open(f'{settings.BASE_DIR}/static/data/genre_title.csv', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 title = Title.objects.get(id=row['title_id'])
                 genre = Genre.objects.get(id=row['genre_id'])
                 title.genre.add(genre)
+                genre_title_objects.append((title.id, genre.id))
 
-        # Загрузка отзывов
-        with open(f'{settings.BASE_DIR}/static/data/review.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Review.objects.create(
-                    id=row['id'],
-                    title_id=row['title_id'],
-                    text=row['text'],
-                    author_id=row['author'],
-                    score=row['score'],
-                    pub_date=row['pub_date']
-                )
-
-        # Загрузка комментариев
-        with open(f'{settings.BASE_DIR}/static/data/comments.csv',
-                  encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                Comment.objects.create(
-                    id=row['id'],
-                    review_id=row['review_id'],
-                    text=row['text'],
-                    author_id=row['author'],
-                    pub_date=row['pub_date']
-                )
+        self.stdout.write(
+            self.style.SUCCESS(
+                f'Успешно загружено {len(genre_title_objects)} genre-title связей'
+            )
+        )
