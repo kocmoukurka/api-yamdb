@@ -112,7 +112,7 @@ class Command(BaseCommand):
             self.style.SUCCESS(
                 (
                     f'Успешно загружено {len(genre_title_objects)}'
-                    ' genre-title связей'
+                    f' genre-title связей'
                 )
             )
         )
