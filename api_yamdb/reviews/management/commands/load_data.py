@@ -93,7 +93,7 @@ class Command(BaseCommand):
                     self.style.SUCCESS(
                         (
                             f'Успешно загружено {len(objects_to_create)}'
-                            ' {model.__name__} записей'
+                            f' {model.__name__} записей'
                         )
                     )
                 )
