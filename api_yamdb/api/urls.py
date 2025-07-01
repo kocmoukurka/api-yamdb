@@ -30,16 +30,17 @@ router_v1.register(
 
 app_name = 'api'
 
+v1_auth = path(
+    'auth/',
+    include(
+        [
+            path('signup/', signup, name='signup'),
+            path('token/', get_token, name='get_token'),
+        ]
+    )
+)
 v1_patterns = [
-    path(
-        'auth/',
-        include(
-            [
-                path('signup/', signup, name='signup'),
-                path('token/', get_token, name='get_token'),
-            ]
-        )
-    ),
+    v1_auth,
     path('', include(router_v1.urls)),
 ]
 

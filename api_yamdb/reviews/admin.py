@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
+
 from reviews.models import Category, Comment, Genre, Title, Review
 
 admin.site.unregister(Group)
@@ -29,9 +30,9 @@ class TitleAdmin(admin.ModelAdmin):
     list_filter = ('category', 'genre', 'year')
     filter_horizontal = ('genre',)
 
+    @admin.display(description='Жанры')
     def display_genres(self, obj):
-        return ", ".join([genre.name for genre in obj.genre.all()])
-    display_genres.short_description = 'Жанры'
+        return ', '.join([genre.name for genre in obj.genre.all()])
 
 
 @admin.register(Review)
