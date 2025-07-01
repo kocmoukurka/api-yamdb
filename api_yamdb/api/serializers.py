@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
@@ -82,7 +83,7 @@ class SignUpSerializer(serializers.Serializer, UsernameValidationMixin):
         send_mail(
             subject='YaMDb confirmation code',
             message=f'Your confirmation code: {confirmation_code}',
-            from_email='yamdb@example.com',
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
         )
@@ -105,12 +106,12 @@ class TokenSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'confirmation_code': 'Неверный код подтверждения.'
             })
-        self.user = user
         return data
 
-    def save(self, **kwargs):
+    def create(self, validated_data):
         """Генерирует JWT-токен для пользователя."""
-        token = AccessToken.for_user(self.user)
+        user = get_object_or_404(User, username=validated_data['username'])
+        token = AccessToken.for_user(user)
         return {'token': str(token)}
 
 
