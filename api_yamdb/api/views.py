@@ -15,7 +15,7 @@ from rest_framework.permissions import (
     IsAuthenticatedOrReadOnly,
 )
 from rest_framework.response import Response
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, Review
 
 from api.filters import TitleFilter
 from api.permissions import (
@@ -150,20 +150,21 @@ class TitleViewSet(viewsets.ModelViewSet):
 
 class BaseReviewCommentViewSet(viewsets.ModelViewSet):
     """Базовый ViewSet для отзывов и комментариев."""
+
     permission_classes = (
         IsAuthenticatedOrReadOnly,
         IsAuthorModeratorAdminOrReadOnly
     )
     http_method_names = ('get', 'post', 'patch', 'delete')
 
-    def get_title(self):
-        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
-
 
 class ReviewViewSet(BaseReviewCommentViewSet):
     """ViewSet для работы с отзывами на произведения."""
 
     serializer_class = ReviewSerializer
+
+    def get_title(self):
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
     def get_queryset(self):
         return self.get_title().reviews.all()
@@ -179,7 +180,7 @@ class CommentViewSet(BaseReviewCommentViewSet):
 
     def get_review(self):
         return get_object_or_404(
-            self.get_title().reviews.all(),
+            Review.objects.filter(title_id=self.kwargs.get('title_id')),
             id=self.kwargs.get('review_id')
         )
 
