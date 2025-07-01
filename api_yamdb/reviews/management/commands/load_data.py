@@ -25,6 +25,9 @@ class Command(BaseCommand):
             'author_id': 'author',
             'pub_date': 'pub_date'
         }
+
+        GenreTitle = Title.genre.through
+
         data_to_load = {
             User: {
                 'file': f'{load_data_dir}users.csv',
@@ -73,10 +76,18 @@ class Command(BaseCommand):
                     'review_id': 'review_id',
                 },
                 'relations': {}
+            },
+            GenreTitle: {
+                'file': f'{load_data_dir}genre_title.csv',
+                'fields': {
+                    'id': 'id',
+                    'title_id': 'title_id',
+                    'genre_id': 'genre_id'
+                },
+                'relations': {}
             }
         }
 
-        # Загрузка основных данных
         for model, config in data_to_load.items():
             objects_to_create = []
             with open(config['file'], encoding='utf-8') as f:
@@ -91,28 +102,8 @@ class Command(BaseCommand):
                 model.objects.bulk_create(objects_to_create)
                 self.stdout.write(
                     self.style.SUCCESS(
-                        (
-                            f'Успешно загружено {len(objects_to_create)}'
-                            f' {model.__name__} записей'
-                        )
+                        f'Успешно загружено {len(objects_to_create)} '
+                        f'{model.__name__} записей'
                     )
                 )
 
-            # Загрузка связей между жанрами и произведениями
-        genre_title_objects = []
-        with open(f'{load_data_dir}genre_title.csv', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                title = Title.objects.get(id=row['title_id'])
-                genre = Genre.objects.get(id=row['genre_id'])
-                title.genre.add(genre)
-                genre_title_objects.append((title.id, genre.id))
-
-        self.stdout.write(
-            self.style.SUCCESS(
-                (
-                    f'Успешно загружено {len(genre_title_objects)}'
-                    f' genre-title связей'
-                )
-            )
-        )

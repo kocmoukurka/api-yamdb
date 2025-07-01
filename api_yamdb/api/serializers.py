@@ -1,7 +1,7 @@
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 
 from rest_framework import serializers
@@ -83,7 +83,7 @@ class SignUpSerializer(serializers.Serializer, UsernameValidationMixin):
         send_mail(
             subject='YaMDb confirmation code',
             message=f'Your confirmation code: {confirmation_code}',
-            from_email='yamdb@example.com',
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=False,
         )
@@ -106,12 +106,12 @@ class TokenSerializer(serializers.Serializer):
             raise serializers.ValidationError({
                 'confirmation_code': 'Неверный код подтверждения.'
             })
-        self.user = user
         return data
 
-    def save(self, **kwargs):
+    def create(self, validated_data):
         """Генерирует JWT-токен для пользователя."""
-        token = AccessToken.for_user(self.user)
+        user = get_object_or_404(User, username=validated_data['username'])
+        token = AccessToken.for_user(user)
         return {'token': str(token)}
 
 
@@ -136,7 +136,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
 
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
-    rating = serializers.FloatField(
+    rating = serializers.IntegerField(
         default=None,
         read_only=True,
         help_text="Средний рейтинг произведения"
@@ -188,32 +188,7 @@ class TitleWriteSerializer(serializers.ModelSerializer):
         return value
 
     def to_representation(self, instance):
-        """Преобразуем вывод данных в требуемый формат."""
-        representation = super().to_representation(instance)
-
-        # Добавляем аннотацию среднего рейтинга, если её нет
-        if not hasattr(instance, 'rating'):
-            instance = Title.objects.annotate(
-                rating=Avg('reviews__score')).get(pk=instance.pk)
-
-        representation['rating'] = int(
-            instance.rating) if instance.rating else None
-
-        # Преобразуем вывод жанров
-        representation['genre'] = [
-            {
-                'name': genre.name,
-                'slug': genre.slug
-            } for genre in instance.genre.all()
-        ]
-
-        # Преобразуем вывод категории
-        representation['category'] = {
-            'name': instance.category.name,
-            'slug': instance.category.slug
-        }
-
-        return representation
+        return TitleReadSerializer(instance, context=self.context).data
 
 
 class ReviewSerializer(serializers.ModelSerializer):
@@ -243,7 +218,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         if request and request.method == 'POST':
             if Review.objects.filter(
-                title=self.context.get('view').get_title(),
+                title=self.context.get('view').get_title().id,
                 author=request.user
             ).exists():
                 raise serializers.ValidationError({
