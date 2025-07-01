@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from reviews.models import Category, Genre, Title, Review, Comment
 
 User = get_user_model()
+GenreTitle = Title.genre.through
 
 
 class Command(BaseCommand):
@@ -25,8 +26,6 @@ class Command(BaseCommand):
             'author_id': 'author',
             'pub_date': 'pub_date'
         }
-
-        GenreTitle = Title.genre.through
 
         data_to_load = {
             User: {
