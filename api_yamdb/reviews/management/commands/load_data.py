@@ -106,3 +106,4 @@ class Command(BaseCommand):
                         f'{model.__name__} записей'
                     )
                 )
+
