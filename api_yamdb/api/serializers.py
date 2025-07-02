@@ -3,7 +3,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import AccessToken
 
@@ -139,7 +138,7 @@ class TitleReadSerializer(serializers.ModelSerializer):
     rating = serializers.IntegerField(
         default=None,
         read_only=True,
-        help_text="Средний рейтинг произведения"
+        help_text='Средний рейтинг произведения'
     )
 
     class Meta:
@@ -218,7 +217,7 @@ class ReviewSerializer(serializers.ModelSerializer):
 
         if request and request.method == 'POST':
             if Review.objects.filter(
-                title=self.context.get('view').get_title().id,
+                title=self.context.get('view').kwargs.get('title_id'),
                 author=request.user
             ).exists():
                 raise serializers.ValidationError({
