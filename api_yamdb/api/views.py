@@ -180,7 +180,7 @@ class CommentViewSet(BaseReviewCommentViewSet):
     def get_review(self):
         return get_object_or_404(
             Review,
-            title=self.kwargs.get('title_id'),
+            title_id=self.kwargs.get('title_id'),
             id=self.kwargs.get('review_id')
         )
 
